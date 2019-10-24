@@ -10,7 +10,7 @@ def read(fname):
 
 setup(
     name='github-team-organizer',
-    version='0.1',
+    version='0.2',
     packages=find_packages(),
     include_package_data=True,
     url='https://soar.name',
@@ -19,6 +19,7 @@ setup(
     author_email='i@soar.name',
     description='Tool for organizing your GitHub Organization',
     long_description=read('README.md'),
+    long_description_content_type='text/markdown',
     entry_points={
         'console_scripts': [
             'team-organizer = github_team_organizer.scripts.organizer:run'
