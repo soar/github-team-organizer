@@ -18,7 +18,7 @@ setup(
     author='soar',
     author_email='i@soar.name',
     description='Tool for organizing your GitHub Organization',
-    long_description=read('README.rst'),
+    long_description=read('README.md'),
     entry_points={
         'console_scripts': [
             'team-organizer = github_team_organizer.scripts.organizer:run'
