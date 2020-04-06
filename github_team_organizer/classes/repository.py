@@ -170,3 +170,6 @@ class GitHubRepositoryWrapper(BaseClass):
                 branch = None
         if settings.apply:
             branch.edit_protection(**protection)
+
+            if protection.get('required_approving_review_count') == GithubObject.NotSet:
+                branch.remove_required_pull_request_reviews()
