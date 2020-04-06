@@ -108,9 +108,8 @@ class GitHubRepositoryWrapper(BaseClass):
                 allow_squash_merge=False,
                 allow_rebase_merge=False,
             )
-            # TODO: enable this
-            # self.obj.enable_vulnerability_alert()
-            # self.obj.enable_automated_security_fixes()
+            self.obj.enable_vulnerability_alert()
+            self.obj.enable_automated_security_fixes()
         return self
 
     def clean_direct_collaborators(self):
