@@ -3,7 +3,7 @@ import typing
 from collections import defaultdict
 
 from cached_property import cached_property
-from github import Github as PyGithub
+from github import Github as PyGithub, GithubObject
 from github.GithubException import GithubException
 from github.Organization import Organization as PyGithubOrganization
 from github.Repository import Repository as PyGithubRepository
@@ -39,6 +39,7 @@ class GitHubRepositoryWrapper(BaseClass):
             pull_teams: typing.List[GitHubTeam] = None,
 
             protection: dict = None,
+            default_branch_name: str = 'master',
             master_branch_name: str = 'master',
 
             github: PyGithub = None,
@@ -58,6 +59,7 @@ class GitHubRepositoryWrapper(BaseClass):
         self.name = name
 
         self.protection = protection or {}
+        self.default_branch_name = default_branch_name
         self.master_branch_name = master_branch_name
 
     def __str__(self):
@@ -103,11 +105,16 @@ class GitHubRepositoryWrapper(BaseClass):
 
     def update_settings(self):
         if settings.apply:
-            self.obj.edit(
-                allow_merge_commit=True,
-                allow_squash_merge=False,
-                allow_rebase_merge=False,
-            )
+            repository_settings = {
+                'allow_merge_commit': True,
+                'allow_squash_merge': False,
+                'allow_rebase_merge': False,
+            }
+
+            if self.default_branch_name != 'master':
+                repository_settings['default_branch'] = self.default_branch_name
+
+            self.obj.edit(**repository_settings)
             self.obj.enable_vulnerability_alert()
             self.obj.enable_automated_security_fixes()
         return self
