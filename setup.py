@@ -10,7 +10,7 @@ def read(fname):
 
 setup(
     name='github-team-organizer',
-    version='0.3',
+    version='0.3.1',
     packages=find_packages(),
     include_package_data=True,
     url='https://soar.name',
@@ -26,7 +26,6 @@ setup(
         ]
     },
     install_requires=[
-        'dotenv',
         'pygithub',
         'python-dotenv',
         'click',
