@@ -1,6 +1,5 @@
 import os
-from distutils.core import setup
-from setuptools import find_packages
+from setuptools import setup, find_namespace_packages
 
 
 def read(fname):
@@ -10,8 +9,8 @@ def read(fname):
 
 setup(
     name='github-team-organizer',
-    version='0.3.1',
-    packages=find_packages(),
+    version='0.3.2',
+    packages=find_namespace_packages(include=['github_team_organizer.*']),
     include_package_data=True,
     url='https://soar.name',
     license='MIT',
