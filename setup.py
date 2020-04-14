@@ -9,7 +9,7 @@ def read(fname):
 
 setup(
     name='github-team-organizer',
-    version='0.3.2',
+    version='0.3.3',
     packages=find_namespace_packages(include=['github_team_organizer.*']),
     include_package_data=True,
     url='https://soar.name',
