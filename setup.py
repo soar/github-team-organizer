@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from setuptools import setup, find_namespace_packages
 
 
@@ -9,7 +10,7 @@ def read(fname):
 
 setup(
     name='github-team-organizer',
-    version='0.3.3',
+    version=Path('version.txt').read_text().strip(),
     packages=find_namespace_packages(include=['github_team_organizer.*']),
     include_package_data=True,
     url='https://soar.name',

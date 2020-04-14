@@ -24,6 +24,9 @@ jobs:
       - name: Install requirements
         run: python -m pip install --upgrade --user setuptools wheel twine
 
+      - name: Bump version
+        run: sed -i "$ s/$/${GITHUB_RUN_NUMBER}/" version.txt
+
       - name: Prepare packages
         run: python setup.py sdist bdist_wheel
 
