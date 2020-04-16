@@ -7,6 +7,7 @@ import sys
 import click
 from dotenv import load_dotenv, find_dotenv
 
+from github_team_organizer.classes.github import GitHubWrapper
 from github_team_organizer.classes.project import GitHubProject
 from github_team_organizer.classes.settings import settings
 from github_team_organizer.classes.team import GitHubTeam
@@ -23,6 +24,11 @@ load_dotenv(find_dotenv(usecwd=True), verbose=True)
 def run(**kwargs):
     for k, v in kwargs.items():
         setattr(settings, k, v)
+
+    all_repositories = [
+        r.full_name
+        for r in GitHubWrapper().default_organization.get_repos(type='all')
+    ]
 
     click.echo(f'Starting Team Organizer for {settings.org}...')
     if settings.apply:
@@ -44,3 +50,7 @@ def run(**kwargs):
     for r in GitHubRepositoryWrapper.instances():
         click.secho(f'Repository {r}', bg='blue')
         r.run()
+        all_repositories.remove(r.full_name)
+
+    for r in all_repositories:
+        click.secho(f'Settings for the repository: {r} not found', bold=True, bg='yellow')
