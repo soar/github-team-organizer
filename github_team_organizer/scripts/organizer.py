@@ -2,6 +2,7 @@
 
 import importlib
 import os
+import sys
 
 import click
 from dotenv import load_dotenv, find_dotenv
@@ -11,7 +12,8 @@ from github_team_organizer.classes.settings import settings
 from github_team_organizer.classes.team import GitHubTeam
 from github_team_organizer.classes.repository import GitHubRepositoryWrapper
 
-load_dotenv(find_dotenv(), verbose=True)
+sys.path.append(os.getcwd())
+load_dotenv(find_dotenv(usecwd=True), verbose=True)
 
 
 @click.command(help='GitHub Config Applier')
