@@ -1,4 +1,5 @@
 import logging
+import os
 import typing
 from collections import defaultdict
 
@@ -41,7 +42,7 @@ class GitHubRepositoryWrapper(BaseClass):
             protection: dict = None,
             default_branch_name: str = 'master',
             master_branch_name: str = 'master',
-            auto_cicd_protection_mode: str = None,
+            auto_cicd_protection_mode: str = os.getenv('AUTO_CICD_PROTECTION_MODE'),
 
             github: PyGithub = None,
             organization: PyGithubOrganization = None
