@@ -41,6 +41,7 @@ class GitHubRepositoryWrapper(BaseClass):
             protection: dict = None,
             default_branch_name: str = 'master',
             master_branch_name: str = 'master',
+            auto_cicd_protection_mode: str = None,
 
             github: PyGithub = None,
             organization: PyGithubOrganization = None
@@ -61,6 +62,7 @@ class GitHubRepositoryWrapper(BaseClass):
         self.protection = protection or {}
         self.default_branch_name = default_branch_name
         self.master_branch_name = master_branch_name
+        self.auto_cicd_protection_mode = auto_cicd_protection_mode
 
     def __str__(self):
         return str(self.obj)
@@ -154,6 +156,17 @@ class GitHubRepositoryWrapper(BaseClass):
             protection.update({
                 'team_push_restrictions': [t.name for t in self.master_teams]
             })
+
+        if self.auto_cicd_protection_mode == 'jenkins':
+            if len(self.obj.get_contents('Jenkinsfile')):
+                if protection.get('contexts') is None:
+                    protection['contexts'] = []
+                protection['contexts'] += [
+                    'continuous-integration/jenkins/branch',
+                    'continuous-integration/jenkins/pr-merge',
+                ]
+            else:
+                logger.error(f'Jenkinsfile not found for {self.obj}')
 
         try:
             branch = self.obj.get_branch(branch_name)
