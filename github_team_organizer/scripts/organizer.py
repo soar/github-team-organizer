@@ -40,11 +40,11 @@ def run(**kwargs):
     importlib.import_module('config')
 
     for t in GitHubTeam.instances():  # type:GitHubTeam
-        click.echo(f'Processing team {t}...')
+        click.secho(f'Processing team {t}...', bg='blue')
         t.run()
 
     for p in GitHubProject.instances():
-        click.echo(click.style(f'Project: {p}', blink=True, bold=True, bg='blue'))
+        click.secho(f'Project: {p}', blink=True, bold=True, bg='blue')
         p.run()
 
     for r in GitHubRepositoryWrapper.instances():
