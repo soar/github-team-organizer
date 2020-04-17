@@ -26,10 +26,11 @@ setup(
         ]
     },
     install_requires=[
-        'pygithub',
-        'python-dotenv',
-        'click',
-        'cached-property',
+        'cached-property >= 1.5, < 1.6',
+        'click >= 7.1, < 7.2',
+        'sgqlc >= 10.1, < 11',
+        'pygithub >= 1.47, < 1.48',
+        'python-dotenv >= 0.12, < 0.13',
     ],
     classifiers=[
         'Intended Audience :: Developers',
