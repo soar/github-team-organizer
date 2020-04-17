@@ -2,6 +2,7 @@ import logging
 import os
 import typing
 from collections import defaultdict
+from fnmatch import fnmatch
 
 import click
 from cached_property import cached_property
@@ -197,10 +198,8 @@ class GitHubRepositoryWrapper(BaseClass):
 
     def apply_protection(self, protection_pattern: str):
         protection = dict(self.protection.get(protection_pattern))
-        if protection_pattern == self.master_branch_name:
-            protection.update({
-                'team_push_restrictions': [t.name for t in self.master_teams]
-            })
+        if fnmatch(self.master_branch_name, protection_pattern):
+            protection['push_actor_ids'] += [t.gq_node_id for t in self.master_teams]
 
         for branch_name in self.precreated_branches:
             try:
