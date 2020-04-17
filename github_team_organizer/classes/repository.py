@@ -3,15 +3,19 @@ import os
 import typing
 from collections import defaultdict
 
+import click
 from cached_property import cached_property
 from github import Github as PyGithub, GithubObject
-from github.GithubException import GithubException
+from github.GithubException import GithubException, UnknownObjectException
 from github.Organization import Organization as PyGithubOrganization
 from github.Repository import Repository as PyGithubRepository
 from github.Team import Team as PyGithubTeam
+from sgqlc.operation import Operation
 
 from github_team_organizer.classes.base import BaseClass
 from github_team_organizer.classes.github import GitHubWrapper
+from github_team_organizer.graphql.github_schema import github_schema as schema
+from github_team_organizer.classes.ghgql import GitHubGraphQL
 from github_team_organizer.classes.settings import settings
 from github_team_organizer.classes.team import GitHubTeam
 
@@ -39,10 +43,11 @@ class GitHubRepositoryWrapper(BaseClass):
             push_teams: typing.List[GitHubTeam] = None,
             pull_teams: typing.List[GitHubTeam] = None,
 
+            precreated_branches: list = None,
             protection: dict = None,
             default_branch_name: str = 'master',
             master_branch_name: str = 'master',
-            auto_cicd_protection_mode: str = os.getenv('AUTO_CICD_PROTECTION_MODE'),
+            auto_cicd_protection_mode: str = None,
 
             github: PyGithub = None,
             organization: PyGithubOrganization = None
@@ -60,10 +65,11 @@ class GitHubRepositoryWrapper(BaseClass):
 
         self.name = name
 
+        self.precreated_branches = precreated_branches or []
         self.protection = protection or {}
         self.default_branch_name = default_branch_name
         self.master_branch_name = master_branch_name
-        self.auto_cicd_protection_mode = auto_cicd_protection_mode
+        self.auto_cicd_protection_mode = auto_cicd_protection_mode or os.getenv('AUTO_CICD_PROTECTION_MODE')
 
     def __str__(self):
         return str(self.obj)
@@ -76,21 +82,59 @@ class GitHubRepositoryWrapper(BaseClass):
     def obj(self) -> PyGithubRepository:
         return self.github.get_repo(self.full_name)
 
+    @cached_property
+    def gq_repository(self) -> schema.Repository:
+        op = Operation(schema.Query)
+        r = op.repository(owner=self.organization.login, name=self.name)
+        r.id()
+        r.branch_protection_rules(first=100)
+        r.branch_protection_rules.nodes.id()
+        r.branch_protection_rules.nodes.pattern()
+        data = GitHubGraphQL().call(op)
+        return (op + data).repository
+
+    @cached_property
+    def gq_node_id(self) -> str:
+        return self.gq_repository.id
+
+    @cached_property
+    def gq_branch_protection_rules(self):
+        return self.gq_repository.branch_protection_rules.nodes
+
+    def gq_get_branch_protection_rule_id(self, pattern: str):
+        for rule in self.gq_branch_protection_rules:
+            if rule.pattern == pattern:
+                return rule.id
+
+    def get_default_protection(self):
+        return {
+            'requires_approving_reviews': True,
+            'required_approving_review_count': 1,
+
+            'requires_commit_signatures': False,
+
+            'is_admin_enforced': False,
+            'dismisses_stale_reviews': True,
+            'requires_code_owner_reviews': False,
+
+            'requires_status_checks': True,
+            'requires_strict_status_checks': True,
+            'required_status_check_contexts': [],
+
+            'restricts_review_dismissals': False,
+            'review_dismissal_actor_ids': [t.gq_node_id for t in self.master_teams],
+
+            'restricts_pushes': True,
+            'push_actor_ids': [t.gq_node_id for t in self.master_teams],
+        }
+
     @property
     def protection(self):
         return self._protection
 
     @protection.setter
     def protection(self, value: dict):
-        default_protection = {
-            'strict': True,
-            'contexts': [],
-            'enforce_admins': False,
-            'dismiss_stale_reviews': True,
-            'dismissal_teams': [t.name for t in self.master_teams],
-            'required_approving_review_count': 1,
-        }
-        self._protection = {k: {**default_protection, **v} for k, v in value.items()}
+        self._protection = {k: {**self.get_default_protection(), **v} for k, v in value.items()}
 
     def run(self):
         self.update_settings()
@@ -101,8 +145,8 @@ class GitHubRepositoryWrapper(BaseClass):
         self.sync_teams(self.pull_teams, 'pull')
 
         if settings.apply:
-            for branch in self.protection.keys():
-                self.apply_protection(branch)
+            for protection_pattern in self.protection.keys():
+                self.apply_protection(protection_pattern)
 
         return self
 
@@ -151,39 +195,53 @@ class GitHubRepositoryWrapper(BaseClass):
                     # team.obj.add_to_repos(self.obj)
                     team.obj.set_repo_permission(self.obj, permission)
 
-    def apply_protection(self, branch_name: str):
-        protection = dict(self.protection.get(branch_name))
-        if branch_name == self.master_branch_name:
+    def apply_protection(self, protection_pattern: str):
+        protection = dict(self.protection.get(protection_pattern))
+        if protection_pattern == self.master_branch_name:
             protection.update({
                 'team_push_restrictions': [t.name for t in self.master_teams]
             })
 
+        for branch_name in self.precreated_branches:
+            try:
+                _ = self.obj.get_branch(branch_name)
+            except GithubException:
+                logger.warning(f'Branch {branch_name} not found, will be created')
+                if settings.apply:
+                    master_branch = self.obj.get_branch('master')
+                    self.obj.create_git_ref(
+                        ref='refs/heads/' + branch_name,
+                        sha=master_branch.commit.sha
+                    )
+
         if self.auto_cicd_protection_mode == 'jenkins':
-            if len(self.obj.get_contents('Jenkinsfile')):
-                if protection.get('contexts') is None:
-                    protection['contexts'] = []
-                protection['contexts'] += [
-                    'continuous-integration/jenkins/branch',
-                    'continuous-integration/jenkins/pr-merge',
-                ]
-            else:
-                logger.error(f'Jenkinsfile not found for {self.obj}')
+            try:
+                if self.obj.get_contents('Jenkinsfile').size != 0:
+                    if protection.get('required_status_check_contexts') is None:
+                        protection['required_status_check_contexts'] = []
+                    protection['required_status_check_contexts'] += [
+                        'continuous-integration/jenkins/branch',
+                        'continuous-integration/jenkins/pr-merge',
+                    ]
+                else:
+                    click.secho(f'Jenkinsfile is empty for {self.obj}', bold=True, bg='yellow')
+            except UnknownObjectException:
+                click.secho(f'Jenkinsfile not found for {self.obj}', bold=True, bg='yellow')
 
-        try:
-            branch = self.obj.get_branch(branch_name)
-        except GithubException:
-            logger.warning(f'Branch {branch_name} not found, will be created')
-            if settings.apply:
-                master_branch = self.obj.get_branch('master')
-                self.obj.create_git_ref(
-                    ref='refs/heads/' + branch_name,
-                    sha=master_branch.commit.sha
-                )
-                branch = self.obj.get_branch(branch_name)
-            else:
-                branch = None
+        protection['pattern'] = protection_pattern
+
+        op = Operation(schema.Mutation)
+
+        if self.gq_get_branch_protection_rule_id(protection_pattern):
+            protection['branch_protection_rule_id'] = self.gq_get_branch_protection_rule_id(protection_pattern)
+            op.update_branch_protection_rule(input=schema.UpdateBranchProtectionRuleInput(
+                **protection
+            ))
+        else:
+            protection['repository_id'] = self.gq_node_id
+            op.create_branch_protection_rule(input=schema.CreateBranchProtectionRuleInput(
+                **protection
+            ))
+
         if settings.apply:
-            branch.edit_protection(**protection)
-
-            if protection.get('required_approving_review_count') == GithubObject.NotSet:
-                branch.remove_required_pull_request_reviews()
+            GitHubGraphQL().call(op)
