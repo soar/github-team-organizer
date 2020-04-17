@@ -1,3 +1,4 @@
+import click
 from cached_property import cached_property
 from sgqlc.endpoint.http import HTTPEndpoint
 
@@ -26,4 +27,9 @@ class GitHubGraphQL:
         return HTTPEndpoint(self.url, self.headers)
 
     def call(self, *args, **kwargs):
-        return self.endpoint(*args, **kwargs)
+        result = self.endpoint(*args, **kwargs)
+
+        if result.get('errors'):
+            click.secho(f'Error occured: {result}', bg='yellow')
+            exit(1)
+        return result
