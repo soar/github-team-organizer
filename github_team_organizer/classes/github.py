@@ -15,10 +15,10 @@ class GitHubWrapper(PyGithub):
         return GitHubWrapper.__instance
 
     def __init__(self, login_or_token: str = None):
-        if not login_or_token:
-            login_or_token = os.getenv('GITHUB_API_KEY')
+        if not hasattr(self, 'login_or_token'):
+            self.login_or_token = login_or_token or os.getenv('GITHUB_API_KEY')
 
-        super().__init__(login_or_token=login_or_token)
+        super().__init__(login_or_token=self.login_or_token)
 
     @cached_property
     def default_organization(self) -> Organization:
