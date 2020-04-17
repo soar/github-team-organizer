@@ -8,10 +8,13 @@ from github.GithubObject import NotSet
 from github.NamedUser import NamedUser
 from github.Organization import Organization
 from github.Team import Team
+from sgqlc.operation import Operation
 
 from github_team_organizer.classes.base import BaseClass
 from github_team_organizer.classes.github import GitHubWrapper
+from github_team_organizer.classes.ghgql import GitHubGraphQL
 from github_team_organizer.classes.settings import settings
+from github_team_organizer.graphql.github_schema import github_schema as schema
 
 
 logger = logging.getLogger(__name__)
@@ -84,6 +87,14 @@ class GitHubTeam(BaseClass):
             )
             logger.info(f' ... created')
             return org_team
+
+    @cached_property
+    def gq_node_id(self) -> str:
+        op = Operation(schema.Query)
+        t = op.organization(login=self.organization.login).team(slug=self.name)
+        t.id()
+        data = GitHubGraphQL().call(op)
+        return (op + data).organization.team.id
 
     @property
     def team_members(self) -> typing.List[NamedUser]:
