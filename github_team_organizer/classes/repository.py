@@ -43,6 +43,7 @@ class GitHubRepositoryWrapper(BaseClass):
             master_teams: typing.List[GitHubTeam] = None,
             push_teams: typing.List[GitHubTeam] = None,
             pull_teams: typing.List[GitHubTeam] = None,
+            triage_teams: typing.List[GitHubTeam] = None,
 
             precreated_branches: list = None,
             protection: dict = None,
@@ -63,6 +64,7 @@ class GitHubRepositoryWrapper(BaseClass):
         self.master_teams = master_teams or []
         self.push_teams = push_teams or []
         self.pull_teams = pull_teams or []
+        self.triage_teams = triage_teams or []
 
         self.name = name
 
@@ -144,6 +146,7 @@ class GitHubRepositoryWrapper(BaseClass):
         self.sync_teams(self.admin_teams, 'admin')
         self.sync_teams([x for x in self.master_teams + self.push_teams if x not in self.admin_teams], 'push')
         self.sync_teams(self.pull_teams, 'pull')
+        self.sync_teams(self.triage_teams, 'triage')
 
         if settings.apply:
             for protection_pattern in self.protection.keys():
