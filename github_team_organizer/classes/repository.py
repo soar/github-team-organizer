@@ -149,8 +149,15 @@ class GitHubRepositoryWrapper(BaseClass):
         self.sync_teams(self.triage_teams, 'triage')
 
         if settings.apply:
+            current_protected_branches = {rule.pattern: rule.id for rule in self.gq_branch_protection_rules}
+
             for protection_pattern in self.protection.keys():
                 self.apply_protection(protection_pattern)
+                current_protected_branches.pop(protection_pattern)
+
+            for rule_pattern, rule_id in current_protected_branches.items():
+                click.secho(f'Removing old protection rule: {rule_pattern} / {rule_id}', bg='yellow')
+                self.remove_protection(rule_id)
 
         return self
 
@@ -245,5 +252,13 @@ class GitHubRepositoryWrapper(BaseClass):
                 **protection
             ))
 
+        if settings.apply:
+            GitHubGraphQL().call(op)
+
+    def remove_protection(self, protection_rule_id):
+        op = Operation(schema.Mutation)
+        op.delete_branch_protection_rule(input=schema.DeleteBranchProtectionRuleInput(
+            branch_protection_rule_id=protection_rule_id
+        ))
         if settings.apply:
             GitHubGraphQL().call(op)
