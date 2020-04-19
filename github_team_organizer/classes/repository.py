@@ -153,7 +153,7 @@ class GitHubRepositoryWrapper(BaseClass):
 
             for protection_pattern in self.protection.keys():
                 self.apply_protection(protection_pattern)
-                current_protected_branches.pop(protection_pattern)
+                current_protected_branches.pop(protection_pattern, None)
 
             for rule_pattern, rule_id in current_protected_branches.items():
                 click.secho(f'Removing old protection rule: {rule_pattern} / {rule_id}', bg='yellow')
