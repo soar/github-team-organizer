@@ -121,7 +121,7 @@ class GitHubRepositoryWrapper(BaseClass):
             'requires_code_owner_reviews': False,
 
             'requires_status_checks': True,
-            'requires_strict_status_checks': True,
+            'requires_strict_status_checks': False,
             'required_status_check_contexts': [],
 
             'restricts_review_dismissals': False,
